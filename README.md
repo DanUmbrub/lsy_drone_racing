@@ -94,6 +94,8 @@ sudo apt install build-essential
 ./wrapper/build_linux.sh
 ```
 
+
+
 Finally, you can test if the installation was successful by running 
 
 ```bash
@@ -114,6 +116,9 @@ and check if all tests complete with
 cd ~/repos/lsy_drone_racing
 pytest tests
 ```
+
+### Potential error source 
+[libGL error](https://stackoverflow.com/questions/71010343/cannot-load-swrast-and-iris-drivers-in-fedora-35/72200748#72200748)
 
 ### Using Docker
 You can also run the simulation with Docker, albeit without the GUI at the moment. To test this, install docker with docker compose on your system, and then run

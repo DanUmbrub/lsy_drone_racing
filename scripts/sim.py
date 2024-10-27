@@ -1,7 +1,6 @@
 """Simulate the competition as in the IROS 2022 Safe Robot Learning competition.
 
 Run as:
-
     $ python scripts/sim.py --config level0.toml
 
 Look for instructions in `README.md` and `edit_this.py`.
@@ -22,9 +21,7 @@ from lsy_drone_racing.utils import load_config, load_controller
 
 if TYPE_CHECKING:
     from munch import Munch
-
     from lsy_drone_racing.envs.drone_racing_env import DroneRacingEnv
-
 
 logger = logging.getLogger(__name__)
 
