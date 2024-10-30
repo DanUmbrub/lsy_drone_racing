@@ -32,6 +32,7 @@ import rospy
 from gymnasium import spaces
 from scipy.spatial.transform import Rotation as R
 
+from lsy_drone_racing.sim.drone import Drone
 from lsy_drone_racing.sim.sim import Sim
 from lsy_drone_racing.utils import check_gate_pass
 from lsy_drone_racing.utils.import_utils import get_ros_package_path, pycrazyswarm
@@ -164,8 +165,6 @@ class DroneRacingDeployEnv(gymnasium.Env):
 
     def close(self):
         """Close the environment by stopping the drone and landing."""
-        if self.target_gate != -1:
-            return  # Don't try to land if the drone hasn't finished the race -> crashed most likely
         start_pos = self.vicon.pos[self.vicon.drone_name]
         gate_rot = R.from_euler("xyz", self.config.env.track.gates[-1].rpy)
         final_pos = start_pos + gate_rot.as_matrix()[:, 1]
@@ -260,7 +259,9 @@ class DroneRacingDeployEnv(gymnasium.Env):
         n_gates = len(self.config.env.track.gates)
         if self.target_gate < n_gates and self.target_gate != -1:
             # Gate IDs go from 0 to N-1, but names go from 1 to N
-            gate_id, gate_size = "gate" + str(self.target_gate + 1), (0.45, 0.45)
+            gate_id = "gate" + str(self.target_gate + 1)
+            # Real gates measure 0.4m x 0.4m, we account for meas. error
+            gate_size = (0.56, 0.56)
             gate_pos = self.vicon.pos[gate_id]
             gate_rot = R.from_euler("xyz", self.vicon.rpy[gate_id])
             return check_gate_pass(gate_pos, gate_rot, gate_size, pos, prev_pos)
@@ -283,6 +284,7 @@ class DroneRacingThrustDeployEnv(DroneRacingDeployEnv):
         """
         super().__init__(config)
         self.action_space = gymnasium.spaces.Box(low=-1, high=1, shape=(4,))
+        self.drone = Drone("mellinger")
 
     def step(
         self, action: NDArray[np.floating]
@@ -297,9 +299,8 @@ class DroneRacingThrustDeployEnv(DroneRacingDeployEnv):
         assert action.shape == self.action_space.shape, f"Invalid action shape: {action.shape}"
         collective_thrust, rpy = action[0], action[1:]
         rpy_deg = np.rad2deg(rpy)
-        # Crazyflie expects negated pitch command. TODO: Check why this is the case and fix this on
-        # the firmware side if possible.
-        self.cf.cmdVel(rpy_deg[0], -rpy_deg[1], rpy_deg[2], collective_thrust)
+        collective_thrust = self.drone._thrust_to_pwms(collective_thrust)
+        self.cf.cmdVel(*rpy_deg, collective_thrust)
         if (dt := time.perf_counter() - tstart) < 1 / self.config.env.freq:
             rospy.sleep(1 / self.config.env.freq - dt)
         current_pos = self.vicon.pos[self.vicon.drone_name]
